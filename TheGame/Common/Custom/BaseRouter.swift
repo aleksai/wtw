@@ -2,7 +2,29 @@
 //  BaseRouter.swift
 //  TheGame
 //
-//  Created by Aleksei Pugachev on 4.03.2023.
+//  Created by Alek Sai on 18.09.2022.
 //
 
-import Foundation
+import UIKit
+
+protocol BaseRouterProtocol {
+    func start(animated: Bool)
+}
+
+class BaseRouter {
+    
+    weak var navigationController: UINavigationController?
+    
+    init(navigationController: UINavigationController?) {
+        self.navigationController = navigationController
+    }
+
+}
+
+extension BaseRouter: BaseRouterProtocol {
+    
+    @objc func start(animated: Bool = false) {
+        U.log(event: "baserouter.next", String(NSStringFromClass(type(of: self))))
+    }
+    
+}

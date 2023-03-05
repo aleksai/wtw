@@ -8,7 +8,7 @@
 import Foundation
 
 protocol GameRouterProtocol {
-    func goSomewhere()
+    
 }
 
 class GameRouter: BaseRouter {
@@ -27,8 +27,6 @@ class GameRouter: BaseRouter {
 
 extension GameRouter: GameRouterProtocol {
     
-    func goSomewhere() {
-        
-    }
+    
     
 }

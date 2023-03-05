@@ -7,11 +7,16 @@
 
 import UIKit
 import Combine
+import CoreLocation
 
 class GameCoordinatorObservable: ObservableObject {
     
-    @Published var status = GameKit.Status.active
-    @Published var voicechat = false
+    @Published fileprivate(set) var status = GameKit.Status.active
+    @Published fileprivate(set) var voicechat = false
+    
+    @Published fileprivate(set) var round: (CLLocation,[String])?
+    
+    @Published fileprivate(set) var answered = (0,0)
     
 }
 
@@ -21,9 +26,19 @@ class GameCoordinator {
 
     private var disposeBag = Set<AnyCancellable>()
     
+    private var round = 0
+    
     init() {
         GameKit.shared.observables.$status.sink { status in
             self.observables.status = status
+            
+            if status == .game {
+                self.round = 0
+                
+                self.observables.answered = (0,0)
+                
+                self.goNextRound()
+            }
         }
         .store(in: &disposeBag)
         
@@ -37,8 +52,28 @@ class GameCoordinator {
 
 extension GameCoordinator {
     
+    private func goNextRound() {
+        guard GameKit.shared.rounds.count > round else {
+            GameKit.shared.stopMatch()
+            return
+        }
+        
+        observables.round = GameKit.shared.rounds[round]
+        round += 1
+    }
+    
+}
+
+extension GameCoordinator {
+    
     public func findMatch() {
         GameKit.shared.findMatch()
+    }
+    
+    public func shareplayMatch() {
+        Task {
+            try? await GameKit.shared.shareplayMatch()
+        }
     }
     
     public func stopMatch() {
@@ -47,6 +82,16 @@ extension GameCoordinator {
     
     public func toggleVoicechat() {
         GameKit.shared.toggleVoicechat()
+    }
+    
+    public func answer(_ answer: String) {
+        observables.answered.0 += 1
+        
+        if answer == observables.round?.1.first {
+            observables.answered.1 += 1
+        }
+        
+        goNextRound()
     }
     
 }

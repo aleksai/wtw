@@ -7,16 +7,26 @@
 
 import UIKit
 import Combine
+import MapKit
 
 class GameView: BaseView {
 
     @IBOutlet weak var playButton: UIButton!
+    @IBOutlet weak var shareplayButton: UIButton!
     @IBOutlet weak var stopButton: UIButton!
     @IBOutlet weak var voiceButton: UIButton!
     @IBOutlet weak var gameoverView: UIView!
+    @IBOutlet weak var prepareView: UIView!
+    @IBOutlet weak var mapView: UIView!
+    @IBOutlet weak var gameView: UIView!
+    @IBOutlet var answerButtons: [UIButton]!
     
     @IBAction func playTap(_ sender: Any) {
         coordinator.findMatch()
+    }
+    
+    @IBAction func shareplayTap(_ sender: Any) {
+        coordinator.shareplayMatch()
     }
     
     @IBAction func stopTap(_ sender: Any) {
@@ -27,8 +37,13 @@ class GameView: BaseView {
         coordinator.toggleVoicechat()
     }
     
+    @IBAction func answerTap(_ sender: Any) {
+        guard let answer = (sender as? UIButton)?.title(for: .normal) else { return }
+        coordinator.answer(answer)
+    }
+    
     struct Layout {
-        static let something: CGFloat = 123
+        
     }
     
     private let coordinator = GameCoordinator()
@@ -38,9 +53,17 @@ class GameView: BaseView {
     
     override func setup() {
         playButton.isHidden = false
+        shareplayButton.isHidden = true
         stopButton.isHidden = true
         voiceButton.isHidden = true
         gameoverView.isHidden = true
+        prepareView.isHidden = true
+        mapView.isHidden = true
+        gameView.isHidden = true
+    }
+    
+    override func appear() {
+        mapView.layer.cornerRadius = mapView.frame.height / 2
     }
     
     override func bind() {
@@ -53,18 +76,22 @@ class GameView: BaseView {
                     self.view.backgroundColor = .systemRed
                 case .active:
                     self.view.backgroundColor = .systemTeal
-                case .matching:
+                case .matching, .shareplay:
                     self.view.backgroundColor = .systemGreen
-                case .game:
-                    self.view.backgroundColor = .systemTeal
+                case .prepare, .game:
+                    self.view.backgroundColor = .white
                 case .gameover:
                     self.view.backgroundColor = .systemTeal
                 }
                 
-                self.playButton.isHidden = status == .game
+                self.playButton.isHidden = status != .active && status != .gameover
+                self.shareplayButton.isHidden = status != .shareplay
                 self.stopButton.isHidden = status != .game
                 self.voiceButton.isHidden = status != .game
+                self.mapView.isHidden = status != .game
                 self.gameoverView.isHidden = status != .gameover
+                self.prepareView.isHidden = status != .prepare
+                self.gameView.isHidden = status != .game
             }
         }
         .store(in: &disposeBag)
@@ -74,6 +101,41 @@ class GameView: BaseView {
                 guard let self else { return }
                 
                 self.voiceButton.setTitleColor(voicechat ? .black : .lightGray, for: .normal)
+            }
+        }
+        .store(in: &disposeBag)
+        
+        coordinator.observables.$round.sink { round in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                
+                guard let map = self.mapView.subviews.first as? MKMapView, let coordinate = round?.0.coordinate else { return }
+                
+                let region = MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10))
+                map.setRegion(region, animated: true)
+                
+                let geocoder = CLGeocoder()
+                 
+                geocoder.reverseGeocodeLocation(CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude), preferredLocale: Locale.init(identifier: "en_US")) { (placemarks, error) in
+                    guard let placemark = placemarks?.first else { return }
+                    
+                    (self.gameView.subviews.first as? UILabel)?.text = "What's the temperature\(placemark.country == nil ? "?" : " in \(placemark.country ?? "")?")"
+                }
+                
+                guard let answers = round?.1.shuffled() else { return }
+                
+                for (i, button) in self.answerButtons.enumerated() {
+                    button.setTitle(answers[i], for: .normal)
+                }
+            }
+        }
+        .store(in: &disposeBag)
+        
+        coordinator.observables.$answered.sink { answered in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                
+                (self.gameoverView.subviews.first as? UILabel)?.text = "\(answered.1)/\(answered.0)"
             }
         }
         .store(in: &disposeBag)
