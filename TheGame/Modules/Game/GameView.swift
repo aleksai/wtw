@@ -19,6 +19,7 @@ class GameView: BaseView {
     @IBOutlet weak var prepareView: UIView!
     @IBOutlet weak var mapView: UIView!
     @IBOutlet weak var gameView: UIView!
+    
     @IBOutlet var answerButtons: [UIButton]!
     
     @IBAction func playTap(_ sender: Any) {
@@ -98,10 +99,10 @@ class GameView: BaseView {
                 self.shareplayButton.isHidden = status != .shareplay
                 self.stopButton.isHidden = status != .game
                 self.voiceButton.isHidden = status != .game
-                self.mapView.isHidden = status != .game
+                self.mapView.isHidden = status != .game || self.coordinator.observables.countdown != nil
                 self.gameoverView.isHidden = status != .gameover
-                self.prepareView.isHidden = status != .prepare && status != .generating && status != .waiting
-                self.gameView.isHidden = status != .game
+                self.prepareView.isHidden = status != .prepare && status != .generating && status != .waiting && self.coordinator.observables.countdown == nil
+                self.gameView.isHidden = status != .game || self.coordinator.observables.countdown != nil
             }
         }
         .store(in: &disposeBag)
@@ -111,6 +112,23 @@ class GameView: BaseView {
                 guard let self else { return }
                 
                 self.voiceButton.setTitleColor(voicechat ? .black : .lightGray, for: .normal)
+            }
+        }
+        .store(in: &disposeBag)
+        
+        coordinator.observables.$countdown.sink { countdown in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                
+                if let countdown {
+                    (self.prepareView.subviews.first as? UILabel)?.text = "\(countdown)"
+                } else {
+                    if self.coordinator.observables.status == .game {
+                        self.gameView.isHidden = false
+                        self.mapView.isHidden = false
+                        self.prepareView.isHidden = true
+                    }
+                }
             }
         }
         .store(in: &disposeBag)
@@ -146,6 +164,18 @@ class GameView: BaseView {
                 guard let self else { return }
                 
                 (self.gameoverView.subviews.first as? UILabel)?.text = "\(answered.1)/\(answered.0)"
+            }
+        }
+        .store(in: &disposeBag)
+        
+        coordinator.observables.$answer.sink { answer in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                
+                for button in self.answerButtons {
+                    button.isUserInteractionEnabled = answer == nil
+                    button.backgroundColor = answer == button.title(for: .normal) ? .green : .black
+                }
             }
         }
         .store(in: &disposeBag)

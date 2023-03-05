@@ -16,7 +16,10 @@ class GameCoordinatorObservable: ObservableObject {
     
     @Published fileprivate(set) var round: [String:Any]?
     
+    @Published fileprivate(set) var countdown: String?
+    
     @Published fileprivate(set) var answered = (0,0)
+    @Published fileprivate(set) var answer: String?
     
 }
 
@@ -28,16 +31,14 @@ class GameCoordinator {
     
     private var round = 0
     
+    private var gameTimer: Timer?
+    
     init() {
         GameKit.shared.observables.$status.sink { status in
             self.observables.status = status
             
             if status == .game {
-                self.round = 0
-                
-                self.observables.answered = (0,0)
-                
-                self.goNextRound()
+                self.startGame()
             }
         }
         .store(in: &disposeBag)
@@ -52,12 +53,49 @@ class GameCoordinator {
 
 extension GameCoordinator {
     
-    private func goNextRound() {
-        guard GameKit.shared.rounds.count > round else {
-            GameKit.shared.stopMatch()
+    private func startGame() {
+        observables.round = nil
+        observables.answer = nil
+        observables.answered = (0,0)
+        observables.voicechat = false
+        
+        observables.countdown = "READY"
+        
+        round = 0
+            
+        if let startDate = GameKit.shared.startDate {
+            gameTimer = Timer(fireAt: startDate, interval: 5, target: self, selector: #selector(goNextRound), userInfo: nil, repeats: true)
+            RunLoop.main.add(gameTimer!, forMode: .default)
+            
+            let countdownTimer = Timer(fire: Calendar.current.date(byAdding: .second, value: -3, to: startDate)!, interval: 1, repeats: true, block: { timer in
+                if self.observables.countdown == "READY" {
+                    self.observables.countdown = "3"
+                } else if self.observables.countdown == "3" {
+                    self.observables.countdown = "2"
+                } else if self.observables.countdown == "2" {
+                    self.observables.countdown = "1"
+                } else {
+                    self.observables.countdown = nil
+                    timer.invalidate()
+                }
+            })
+            RunLoop.main.add(countdownTimer, forMode: .default)
+        }
+    }
+    
+    @objc private func goNextRound() {
+        print("NEXT ROUND")
+        
+        guard observables.status == .game && GameKit.shared.rounds.count > round else {
+            gameTimer?.invalidate()
+            
+            if observables.status == .game {
+                GameKit.shared.stopMatch()
+            }
             return
         }
         
+        observables.answer = nil
         observables.round = GameKit.shared.rounds[round]
         round += 1
     }
@@ -85,13 +123,12 @@ extension GameCoordinator {
     }
     
     public func answer(_ answer: String) {
+        observables.answer = answer
         observables.answered.0 += 1
         
         if answer == (observables.round?["answers"] as? [String])?.first {
             observables.answered.1 += 1
         }
-        
-        goNextRound()
     }
     
 }

@@ -110,12 +110,14 @@ class GameKit: NSObject {
     public func shareplayMatch() async throws {
         let request = GKMatchRequest()
         request.minPlayers = 2
+        request.maxPlayers = 10
+        
         request.recipients = shareplayRecipients
         
         match = try await GKMatchmaker.shared().findMatch(for: request)
         match?.delegate = self
         
-        runGame()
+//        runGame()
     }
     
     public func stopMatch() {
@@ -216,6 +218,14 @@ extension GameKit {
 
 extension GameKit: GKMatchmakerViewControllerDelegate {
     
+    func matchmakerViewController(_ viewController: GKMatchmakerViewController, didFindHostedPlayers players: [GKPlayer]) {
+        print("AAAA")
+    }
+    
+    func matchmakerViewController(_ viewController: GKMatchmakerViewController, hostedPlayerDidAccept player: GKPlayer) {
+        print("MMMM")
+    }
+    
     func matchmakerViewControllerWasCancelled(_ viewController: GKMatchmakerViewController) {
         print("MATCH VC CANCEL", viewController)
         
@@ -254,6 +264,10 @@ extension GameKit: GKLocalPlayerListener {
         viewController?.matchmakerDelegate = self
         
         U.present(viewController)
+    }
+    
+    func player(_ player: GKPlayer, didRequestMatchWithRecipients recipientPlayers: [GKPlayer]) {
+        print("PLAYER REQUEST", recipientPlayers)
     }
     
 }
