@@ -58,4 +58,21 @@ class GeoJSON {
         return nil
     }
     
+    static func generateRandomLocations(_ amount: Int = 10) -> [CLLocation] {
+        var randomLocations = [CLLocation]()
+        
+        if let path = Bundle.main.path(forResource: "land", ofType: "json"),
+           let jsonString = try? String(contentsOfFile: path) {
+            if let landFeatures = GeoJSON.parse(jsonString) {
+                for _ in 1...amount {
+                    if let feature = landFeatures.randomElement(), case .point(let coordinates) = feature.geometry {
+                        randomLocations.append(CLLocation(latitude: coordinates.latitude, longitude: coordinates.longitude))
+                    }
+                }
+            }
+        }
+        
+        return randomLocations
+    }
+    
 }

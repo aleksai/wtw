@@ -78,8 +78,18 @@ class GameView: BaseView {
                     self.view.backgroundColor = .systemTeal
                 case .matching, .shareplay:
                     self.view.backgroundColor = .systemGreen
-                case .prepare, .game:
+                case .prepare, .generating, .waiting, .game:
                     self.view.backgroundColor = .white
+                    
+                    switch status {
+                    case .prepare:
+                        (self.prepareView.subviews.first as? UILabel)?.text = "ROLLING A DICE..."
+                    case .waiting:
+                        (self.prepareView.subviews.first as? UILabel)?.text = "WAITING..."
+                    case .generating:
+                        (self.prepareView.subviews.first as? UILabel)?.text = "GENERATING..."
+                    default: break
+                    }
                 case .gameover:
                     self.view.backgroundColor = .systemTeal
                 }
@@ -90,7 +100,7 @@ class GameView: BaseView {
                 self.voiceButton.isHidden = status != .game
                 self.mapView.isHidden = status != .game
                 self.gameoverView.isHidden = status != .gameover
-                self.prepareView.isHidden = status != .prepare
+                self.prepareView.isHidden = status != .prepare && status != .generating && status != .waiting
                 self.gameView.isHidden = status != .game
             }
         }
@@ -109,20 +119,20 @@ class GameView: BaseView {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 
-                guard let map = self.mapView.subviews.first as? MKMapView, let coordinate = round?.0.coordinate else { return }
+                guard let map = self.mapView.subviews.first as? MKMapView, let latitide = round?["latitude"] as? Double, let longitude = round?["longitude"] as? Double else { return }
                 
-                let region = MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10))
+                let region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: latitide, longitude: longitude), span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10))
                 map.setRegion(region, animated: true)
                 
                 let geocoder = CLGeocoder()
                  
-                geocoder.reverseGeocodeLocation(CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude), preferredLocale: Locale.init(identifier: "en_US")) { (placemarks, error) in
+                geocoder.reverseGeocodeLocation(CLLocation(latitude: latitide, longitude: longitude), preferredLocale: Locale.init(identifier: "en_US")) { (placemarks, error) in
                     guard let placemark = placemarks?.first else { return }
                     
                     (self.gameView.subviews.first as? UILabel)?.text = "What's the temperature\(placemark.country == nil ? "?" : " in \(placemark.country ?? "")?")"
                 }
                 
-                guard let answers = round?.1.shuffled() else { return }
+                guard let answers = (round?["answers"] as? [String])?.shuffled() else { return }
                 
                 for (i, button) in self.answerButtons.enumerated() {
                     button.setTitle(answers[i], for: .normal)

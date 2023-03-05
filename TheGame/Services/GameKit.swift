@@ -26,6 +26,8 @@ class GameKit: NSObject {
         case shareplay
         case matching
         case prepare
+        case generating
+        case waiting
         case game
         case gameover
     }
@@ -34,7 +36,8 @@ class GameKit: NSObject {
     
     private(set) var observables = GameKitObservable()
     
-    private(set) var rounds = [(CLLocation,[String])]()
+    private(set) var rounds = [[String:Any]]()
+    private(set) var startDate: Date?
     
     private var shareplayRecipients = [GKPlayer]() {
         didSet {
@@ -92,18 +95,16 @@ class GameKit: NSObject {
     }
     
     public func findMatch() {
-        runGame()
-        
-//        observables.status = .matching
-//
-//        let request = GKMatchRequest()
-//        request.minPlayers = 2
-//
-//        let viewController = GKMatchmakerViewController(matchRequest: request)
-//        viewController?.matchmakerDelegate = self
-//        viewController?.matchmakingMode = .inviteOnly
-//
-//        U.present(viewController)
+        observables.status = .matching
+
+        let request = GKMatchRequest()
+        request.minPlayers = 2
+
+        let viewController = GKMatchmakerViewController(matchRequest: request)
+        viewController?.matchmakerDelegate = self
+        viewController?.matchmakingMode = .inviteOnly
+
+        U.present(viewController)
     }
     
     public func shareplayMatch() async throws {
@@ -156,28 +157,43 @@ extension GameKit {
     private func runGame() {
         observables.status = .prepare
         
-        Task {
-            await generateGame()
+        match?.chooseBestHostingPlayer { player in
+            print("FIGHTER", GKLocalPlayer.local.gamePlayerID, player?.gamePlayerID)
+            
+            self.observables.status = GKLocalPlayer.local.gamePlayerID == player?.gamePlayerID ? .generating : .waiting
+            
+            if GKLocalPlayer.local.gamePlayerID == player?.gamePlayerID {
+                Task {
+                    await self.generateGame()
+                    
+                    let now = Date()
+                    self.startDate = now.addingTimeInterval(5).addingTimeInterval(10 - now.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10))
+                    
+                    if let data = try? JSONSerialization.data(withJSONObject: ["rounds": self.rounds, "startDate": Int(self.startDate!.timeIntervalSince1970)], options: []) {
+                        try? self.match?.sendData(toAllPlayers: data, with: .reliable)
+                    }
+                    
+                    self.observables.status = .game
+                }
+            }
         }
     }
     
     private func generateGame() async {
         let service = WeatherService()
         
-        let randomLocations = generateRandomLocations()
+        let randomLocations = GeoJSON.generateRandomLocations()
         
         var temperatures = [String]()
         
         rounds.removeAll()
-        
-        print("TEST2", randomLocations.count)
         
         for location in randomLocations {
             do {
                 let (hourly, _, _) = try await service.weather(for: location, including: .hourly, .daily, .alerts)
                 
                 if let string = hourly.forecast.last?.temperature.formatted() {
-                    rounds.append((location,[string]))
+                    rounds.append(["latitude": Double(location.coordinate.latitude), "longitude": Double(location.coordinate.longitude), "answers": [string]])
                     temperatures.append(string)
                 }
             } catch {
@@ -185,36 +201,15 @@ extension GameKit {
             }
         }
         
-        print("TEST3", rounds.count)
-        
         for (i, _) in rounds.enumerated() {
-            while rounds[i].1.count != 4 {
-                if let wrong = temperatures.randomElement(), !rounds[i].1.contains(where: { $0 == wrong }) {
-                    rounds[i].1.append(wrong)
+            guard var answers = rounds[i]["answers"] as? [String] else { continue }
+            while answers.count != 4 {
+                if let wrong = temperatures.randomElement(), !answers.contains(where: { $0 == wrong }) {
+                    answers.append(wrong)
                 }
             }
+            rounds[i]["answers"] = answers
         }
-        
-        observables.status = .game
-    }
-    
-    private func generateRandomLocations() -> [CLLocation] {
-        var randomLocations = [CLLocation]()
-        
-        if let path = Bundle.main.path(forResource: "land", ofType: "json"),
-           let jsonString = try? String(contentsOfFile: path) {
-            if let landFeatures = GeoJSON.parse(jsonString) {
-                for _ in 1...10 {
-                    if let feature = landFeatures.randomElement(), case .point(let coordinates) = feature.geometry {
-                        randomLocations.append(CLLocation(latitude: coordinates.latitude, longitude: coordinates.longitude))
-                    }
-                }
-            }
-        }
-        
-        print("TEST1", randomLocations.count)
-        
-        return randomLocations
     }
     
 }
@@ -287,7 +282,18 @@ extension GameKit: GKMatchDelegate {
     }
     
     func match(_ match: GKMatch, didReceive data: Data, forRecipient recipient: GKPlayer, fromRemotePlayer player: GKPlayer) {
-        print("MATCH FROM TO", player, recipient)
+        print("MATCH FROM TO", player, recipient, data)
+        
+        guard GKLocalPlayer.local.gamePlayerID == recipient.gamePlayerID, let data = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else { return }
+        
+        if let rounds = data["rounds"] as? [[String:Any]] {
+            if let startDate = data["startDate"] as? Int {
+                self.rounds = rounds
+                self.startDate = Date(timeIntervalSince1970: TimeInterval(startDate))
+                
+                self.observables.status = .game
+            }
+        }
     }
     
 }

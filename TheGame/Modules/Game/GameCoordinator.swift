@@ -14,7 +14,7 @@ class GameCoordinatorObservable: ObservableObject {
     @Published fileprivate(set) var status = GameKit.Status.active
     @Published fileprivate(set) var voicechat = false
     
-    @Published fileprivate(set) var round: (CLLocation,[String])?
+    @Published fileprivate(set) var round: [String:Any]?
     
     @Published fileprivate(set) var answered = (0,0)
     
@@ -87,7 +87,7 @@ extension GameCoordinator {
     public func answer(_ answer: String) {
         observables.answered.0 += 1
         
-        if answer == observables.round?.1.first {
+        if answer == (observables.round?["answers"] as? [String])?.first {
             observables.answered.1 += 1
         }
         
