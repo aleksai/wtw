@@ -73,6 +73,8 @@ class GameView: BaseView {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 
+                var preparation = false
+                
                 switch status {
                 case .invalid:
                     self.view.backgroundColor = .systemRed
@@ -80,11 +82,15 @@ class GameView: BaseView {
                     self.view.backgroundColor = .systemTeal
                 case .matching, .shareplay:
                     self.view.backgroundColor = .systemGreen
-                case .prepare, .generating, .waiting, .game:
+                case .connecting, .dice, .generating, .waiting, .game:
                     self.view.backgroundColor = .white
                     
+                    preparation = true
+                    
                     switch status {
-                    case .prepare:
+                    case .connecting:
+                        (self.prepareView.subviews.first as? UILabel)?.text = "CONNECTING..."
+                    case .dice:
                         (self.prepareView.subviews.first as? UILabel)?.text = "ROLLING A DICE..."
                     case .waiting:
                         (self.prepareView.subviews.first as? UILabel)?.text = "WAITING..."
@@ -102,7 +108,7 @@ class GameView: BaseView {
                 self.voiceButton.isHidden = status != .game
                 self.mapView.isHidden = status != .game || self.coordinator.observables.countdown != nil
                 self.gameoverView.isHidden = status != .gameover
-                self.prepareView.isHidden = status != .prepare && status != .generating && status != .waiting && self.coordinator.observables.countdown == nil
+                self.prepareView.isHidden = !preparation && self.coordinator.observables.countdown == nil
                 self.gameView.isHidden = status != .game || self.coordinator.observables.countdown != nil
             }
         }

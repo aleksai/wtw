@@ -27,7 +27,8 @@ class GameKit: NSObject {
         case active
         case shareplay
         case matching
-        case prepare
+        case connecting
+        case dice
         case generating
         case waiting
         case game
@@ -49,9 +50,13 @@ class GameKit: NSObject {
         }
     }
     
-    private var generator = false
     private var match: GKMatch?
     private var voiceChat: GKVoiceChat?
+    
+    private var myDice = [Int]()
+    private var dice = [String:[Int]]()
+    private var generator = false
+    
     private var avatars: [String:UIImage] = [:]
     
     public func start() {
@@ -102,13 +107,11 @@ class GameKit: NSObject {
         observables.status = .matching
 
         let request = GKMatchRequest()
+        
         request.minPlayers = 2
         request.maxPlayers = 10
         
-        avatars.removeAll()
-        generator = false
-        
-        observables.points.removeAll()
+        reset()
 
         let viewController = GKMatchmakerViewController(matchRequest: request)
         viewController?.matchmakerDelegate = self
@@ -119,20 +122,17 @@ class GameKit: NSObject {
     
     public func shareplayMatch() async throws {
         let request = GKMatchRequest()
+        
         request.minPlayers = 2
         request.maxPlayers = 10
         
-        avatars.removeAll()
-        generator = false
-        
-        observables.points.removeAll()
-        
+        request.playerGroup = 101
         request.recipients = shareplayRecipients
         
-        match = try await GKMatchmaker.shared().findMatch(for: request)
-        match?.delegate = self
+        reset()
         
-//        runGame()
+        let match = try await GKMatchmaker.shared().findMatch(for: request)
+        setMatch(match)
     }
     
     public func stopMatch() {
@@ -189,15 +189,67 @@ class GameKit: NSObject {
 
 extension GameKit {
     
-    private func runGame() {
-        observables.status = .prepare
+    private func setMatch(_ match: GKMatch) {
+        match.delegate = self
         
-        match?.chooseBestHostingPlayer { player in
-            print("FIGHTER", GKLocalPlayer.local.gamePlayerID, player?.gamePlayerID)
+        self.match = match
+        self.connect()
+        
+        self.match?.players.forEach { player in
+            self.loadPlayerPhoto(player)
+        }
+    }
+    
+    private func loadPlayerPhoto(_ player: GKPlayer) {
+        player.loadPhoto(for: .small) { photo, error in
+            if let error {
+                U.log(event: "GameKit.loadPhoto.error", error)
+                return
+            }
             
-            self.observables.status = GKLocalPlayer.local.gamePlayerID == player?.gamePlayerID ? .generating : .waiting
+            if let photo {
+                self.avatars[player.gamePlayerID] = photo
+            }
+        }
+    }
+    
+    private func connect() {
+        observables.status = .connecting
+        
+        tryToRunMatch()
+    }
+    
+    private func checkDice() {
+        print("DICE", myDice, dice, match?.players.count)
+        
+        guard dice.count == match?.players.count else { return }
+        
+        for i in 0...10 {
+            var win = true
+            var lose = false
             
-            if GKLocalPlayer.local.gamePlayerID == player?.gamePlayerID {
+            for oppDice in dice {
+                if oppDice.value[i] >= myDice[i] {
+                    win = false
+                }
+                
+                if oppDice.value[i] > myDice[i] {
+                    lose = true
+                }
+            }
+            
+            if lose {
+                print("LOSE")
+                
+                observables.status = .waiting
+                
+                return
+            }
+            
+            if win {
+                print("WIN")
+                observables.status = .generating
+                                
                 Task {
                     self.generator = true
                     
@@ -212,6 +264,25 @@ extension GameKit {
                     
                     self.observables.status = .game
                 }
+                
+                return
+            }
+        }
+    }
+    
+    private func tryToRunMatch() {
+        if match?.expectedPlayerCount == 0 {
+            guard observables.status == .connecting else { return }
+            
+            observables.status = .dice
+            
+            let dice = (0...10).map { _ in Int.random(in: 1...1000) }
+            myDice = dice
+            
+            checkDice()
+            
+            if let data = try? JSONSerialization.data(withJSONObject: ["dice": dice], options: []) {
+                try? self.match?.sendData(toAllPlayers: data, with: .reliable)
             }
         }
     }
@@ -261,6 +332,15 @@ extension GameKit {
         }
     }
     
+    private func reset() {
+        avatars.removeAll()
+        dice.removeAll()
+        
+        generator = false
+        
+        observables.points.removeAll()
+    }
+    
 }
 
 extension GameKit: GKMatchmakerViewControllerDelegate {
@@ -292,23 +372,7 @@ extension GameKit: GKMatchmakerViewControllerDelegate {
         
         viewController.dismiss(animated: true, completion: nil)
 
-        match.delegate = self
-        
-        self.match = match
-        self.runGame()
-        
-        self.match?.players.forEach { player in
-            player.loadPhoto(for: .small) { photo, error in
-                if let error {
-                    U.log(event: "GameKit.loadPhoto.error", error)
-                    return
-                }
-                
-                if let photo {
-                    self.avatars[player.gamePlayerID] = photo
-                }
-            }
-        }
+        setMatch(match)
     }
     
 }
@@ -320,10 +384,23 @@ extension GameKit: GKLocalPlayerListener {
         
         observables.status = .matching
         
-        let viewController = GKMatchmakerViewController(invite: invite)
-        viewController?.matchmakerDelegate = self
-        
-        U.present(viewController)
+        if invite.playerGroup == 101 {
+            GKMatchmaker.shared().match(for: invite) { match, error in
+                if let error {
+                    U.log(event: "GameKit.invitematch.error", error)
+                    return
+                }
+                
+                if let match {
+                    self.setMatch(match)
+                }
+            }
+        } else {
+            let viewController = GKMatchmakerViewController(invite: invite)
+            viewController?.matchmakerDelegate = self
+
+            U.present(viewController)
+        }
     }
     
     func player(_ player: GKPlayer, didRequestMatchWithRecipients recipientPlayers: [GKPlayer]) {
@@ -339,6 +416,9 @@ extension GameKit: GKMatchDelegate {
         
         if state == .disconnected {
             stopMatch()
+        } else {
+            loadPlayerPhoto(player)
+            connect()
         }
     }
     
@@ -360,8 +440,16 @@ extension GameKit: GKMatchDelegate {
         
         guard GKLocalPlayer.local.gamePlayerID == recipient.gamePlayerID, let data = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else { return }
         
+        if let dice = data["dice"] as? [Int] {
+            print("MESSAGE DICE")
+            self.dice[player.gamePlayerID] = dice
+            
+            checkDice()
+        }
+        
         if let rounds = data["rounds"] as? [[String:Any]] {
             if let startDate = data["startDate"] as? Int {
+                print("MESSAGE ROUNDS")
                 self.rounds = rounds
                 self.startDate = Date(timeIntervalSince1970: TimeInterval(startDate))
                 
@@ -370,6 +458,7 @@ extension GameKit: GKMatchDelegate {
         }
         
         if let answer = data["answer"] as? String {
+            print("MESSAGE ANSWER")
             observables.answers[player.gamePlayerID] = answer
             
             if generator, let isRight = data["isRight"] as? Bool, isRight {
@@ -378,6 +467,7 @@ extension GameKit: GKMatchDelegate {
         }
         
         if let points = data["points"] as? [String:Int] {
+            print("MESSAGE POINTS")
             observables.points = points
         }
     }

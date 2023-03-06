@@ -65,11 +65,12 @@ class GameCoordinator {
 extension GameCoordinator {
     
     private func startGame() {
+        print("STARTSTARTSTART")
         observables.round = nil
         observables.answer = nil
         observables.voicechat = false
         
-        observables.countdown = "READY"
+        observables.countdown = "READY?"
         
         round = 0
             
@@ -78,7 +79,7 @@ extension GameCoordinator {
             RunLoop.main.add(gameTimer!, forMode: .default)
             
             let countdownTimer = Timer(fire: Calendar.current.date(byAdding: .second, value: -3, to: startDate)!, interval: 1, repeats: true, block: { timer in
-                if self.observables.countdown == "READY" {
+                if self.observables.countdown == "READY?" {
                     self.observables.countdown = "3"
                 } else if self.observables.countdown == "3" {
                     self.observables.countdown = "2"
@@ -98,6 +99,7 @@ extension GameCoordinator {
         
         guard observables.status == .game && GameKit.shared.rounds.count > round else {
             gameTimer?.invalidate()
+            gameTimer = nil
             
             if observables.status == .game {
                 GameKit.shared.stopMatch()
