@@ -7,68 +7,36 @@
 
 import CoreLocation
 
-struct GeoJSONFeature {
-    let type: String
-    let geometry: GeoJSONGeometry
-    let properties: [String: Any]?
-}
-
-enum GeoJSONGeometry {
-    case point(coordinates: CLLocationCoordinate2D)
-    // Add cases for other geometry types as needed
+struct GeoCity {
+    let name: String
+    let lat: String
+    let lng: String
 }
 
 class GeoJSON {
     
-    static func parse(_ jsonString: String) -> [GeoJSONFeature]? {
-        guard let jsonData = jsonString.data(using: .utf8) else { return nil }
+    static func generateRandomLocations(_ amount: Int = 5) -> [CLLocation] {
+        var randomLocations = [CLLocation]()
         
-        do {
-            if let json = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] {
-                if let features = json["features"] as? [[String: Any]] {
-                    return features.compactMap { featureJson in
-                        if let geometryJson = featureJson["geometry"] as? [String: Any],
-                           let type = featureJson["type"] as? String,
-                           let geometryType = geometryJson["type"] as? String {
-                            let geometry: GeoJSONGeometry?
-                            switch geometryType {
-                            case "Polygon":
-                                if let coordinates = geometryJson["coordinates"] as? [[[Double]]], let coordinates = coordinates.first?.first {
-                                    let coordinate = CLLocationCoordinate2D(latitude: coordinates[1], longitude: coordinates[0])
-                                    geometry = .point(coordinates: coordinate)
-                                } else {
-                                    geometry = nil
-                                }
-                            // Add cases for other geometry types as needed
-                            default:
-                                geometry = nil
-                            }
-                            let properties = featureJson["properties"] as? [String: Any]
-                            return GeoJSONFeature(type: type, geometry: geometry ?? .point(coordinates: CLLocationCoordinate2D()), properties: properties)
+        if let path = Bundle.main.path(forResource: "cities", ofType: "json"), let jsonString = try? String(contentsOfFile: path) {
+            guard let jsonData = jsonString.data(using: .utf8) else { return [] }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [[String:String]] {
+                    let randomCities = json[randomPick: amount].compactMap { cityJson in
+                        if let name = cityJson["name"], let lat = cityJson["lat"], let lng = cityJson["lng"] {
+                            return GeoCity(name: name, lat: lat, lng: lng)
                         } else {
                             return nil
                         }
                     }
-                }
-            }
-        } catch {
-            print("Error parsing GeoJSON: \(error.localizedDescription)")
-        }
-        
-        return nil
-    }
-    
-    static func generateRandomLocations(_ amount: Int = 10) -> [CLLocation] {
-        var randomLocations = [CLLocation]()
-        
-        if let path = Bundle.main.path(forResource: "land", ofType: "json"),
-           let jsonString = try? String(contentsOfFile: path) {
-            if let landFeatures = GeoJSON.parse(jsonString) {
-                for _ in 1...amount {
-                    if let feature = landFeatures.randomElement(), case .point(let coordinates) = feature.geometry {
-                        randomLocations.append(CLLocation(latitude: coordinates.latitude, longitude: coordinates.longitude))
+                    
+                    for city in randomCities {
+                        randomLocations.append(CLLocation(latitude: Double(city.lat) ?? 0, longitude: Double(city.lng) ?? 0))
                     }
                 }
+            } catch {
+                print("Error parsing GeoJSON: \(error.localizedDescription)")
             }
         }
         

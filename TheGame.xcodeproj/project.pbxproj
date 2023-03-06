@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		570690EC29B63938002705F1 /* cities.json in Resources */ = {isa = PBXBuildFile; fileRef = 570690EB29B63938002705F1 /* cities.json */; };
+		570690EE29B63AD4002705F1 /* Array+random.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570690ED29B63AD4002705F1 /* Array+random.swift */; };
 		57E47C7E29B36607003208D6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E47C7D29B36607003208D6 /* AppDelegate.swift */; };
 		57E47C8229B36607003208D6 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E47C8129B36607003208D6 /* GameView.swift */; };
 		57E47C8829B36607003208D6 /* TheGame.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 57E47C8629B36607003208D6 /* TheGame.xcdatamodeld */; };
@@ -21,10 +23,11 @@
 		57E47CC629B38E21003208D6 /* BaseRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E47CC529B38E21003208D6 /* BaseRouter.swift */; };
 		57E47CC929B3E16E003208D6 /* Double+random.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E47CC829B3E16E003208D6 /* Double+random.swift */; };
 		57E47CD329B40B68003208D6 /* GeoJSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E47CD229B40B68003208D6 /* GeoJSON.swift */; };
-		57E47CD529B40E79003208D6 /* land.json in Resources */ = {isa = PBXBuildFile; fileRef = 57E47CD429B40E79003208D6 /* land.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		570690EB29B63938002705F1 /* cities.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = cities.json; sourceTree = "<group>"; };
+		570690ED29B63AD4002705F1 /* Array+random.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+random.swift"; sourceTree = "<group>"; };
 		57E47C7A29B36607003208D6 /* TheGame.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheGame.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		57E47C7D29B36607003208D6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		57E47C8129B36607003208D6 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
@@ -42,7 +45,6 @@
 		57E47CC529B38E21003208D6 /* BaseRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseRouter.swift; sourceTree = "<group>"; };
 		57E47CC829B3E16E003208D6 /* Double+random.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Double+random.swift"; sourceTree = "<group>"; };
 		57E47CD229B40B68003208D6 /* GeoJSON.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoJSON.swift; sourceTree = "<group>"; };
-		57E47CD429B40E79003208D6 /* land.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = land.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,7 +94,7 @@
 				57E47C8929B36607003208D6 /* Assets.xcassets */,
 				57E47C8B29B36607003208D6 /* LaunchScreen.storyboard */,
 				57E47C8E29B36607003208D6 /* Info.plist */,
-				57E47CD429B40E79003208D6 /* land.json */,
+				570690EB29B63938002705F1 /* cities.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -148,6 +150,7 @@
 			isa = PBXGroup;
 			children = (
 				57E47CC829B3E16E003208D6 /* Double+random.swift */,
+				570690ED29B63AD4002705F1 /* Array+random.swift */,
 			);
 			path = System;
 			sourceTree = "<group>";
@@ -214,7 +217,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				57E47CD529B40E79003208D6 /* land.json in Resources */,
+				570690EC29B63938002705F1 /* cities.json in Resources */,
 				57E47C8D29B36607003208D6 /* LaunchScreen.storyboard in Resources */,
 				57E47C8A29B36607003208D6 /* Assets.xcassets in Resources */,
 				57E47CBB29B36BD8003208D6 /* GameView.xib in Resources */,
@@ -228,6 +231,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				570690EE29B63AD4002705F1 /* Array+random.swift in Sources */,
 				57E47C8229B36607003208D6 /* GameView.swift in Sources */,
 				57E47CD329B40B68003208D6 /* GeoJSON.swift in Sources */,
 				57E47CC629B38E21003208D6 /* BaseRouter.swift in Sources */,

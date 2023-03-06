@@ -17,9 +17,10 @@ class GameCoordinatorObservable: ObservableObject {
     @Published fileprivate(set) var round: [String:Any]?
     
     @Published fileprivate(set) var countdown: String?
+    @Published fileprivate(set) var points: [String:Int] = [:]
     
-    @Published fileprivate(set) var answered = (0,0)
     @Published fileprivate(set) var answer: String?
+    @Published fileprivate(set) var answers: [String:String] = [:]
     
 }
 
@@ -47,6 +48,16 @@ class GameCoordinator {
             self.observables.voicechat = voicechat
         }
         .store(in: &disposeBag)
+        
+        GameKit.shared.observables.$answers.sink { answers in
+            self.observables.answers = answers
+        }
+        .store(in: &disposeBag)
+        
+        GameKit.shared.observables.$points.sink { points in
+            self.observables.points = points
+        }
+        .store(in: &disposeBag)
     }
     
 }
@@ -56,7 +67,6 @@ extension GameCoordinator {
     private func startGame() {
         observables.round = nil
         observables.answer = nil
-        observables.answered = (0,0)
         observables.voicechat = false
         
         observables.countdown = "READY"
@@ -92,8 +102,11 @@ extension GameCoordinator {
             if observables.status == .game {
                 GameKit.shared.stopMatch()
             }
+            
             return
         }
+        
+        GameKit.shared.clearAnswers()
         
         observables.answer = nil
         observables.round = GameKit.shared.rounds[round]
@@ -124,11 +137,8 @@ extension GameCoordinator {
     
     public func answer(_ answer: String) {
         observables.answer = answer
-        observables.answered.0 += 1
         
-        if answer == (observables.round?["answers"] as? [String])?.first {
-            observables.answered.1 += 1
-        }
+        GameKit.shared.sendAnswer(answer, isRight: answer == (observables.round?["answers"] as? [String])?.first)
     }
     
 }

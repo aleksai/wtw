@@ -15,6 +15,8 @@ class GameKitObservable: ObservableObject {
     
     @Published var status = GameKit.Status.active
     @Published var voicechat = false
+    @Published var answers: [String:String] = [:]
+    @Published var points: [String:Int] = [:]
     
 }
 
@@ -47,8 +49,10 @@ class GameKit: NSObject {
         }
     }
     
+    private var generator = false
     private var match: GKMatch?
     private var voiceChat: GKVoiceChat?
+    private var avatars: [String:UIImage] = [:]
     
     public func start() {
         GKLocalPlayer.local.authenticateHandler = { viewController, error in
@@ -99,6 +103,12 @@ class GameKit: NSObject {
 
         let request = GKMatchRequest()
         request.minPlayers = 2
+        request.maxPlayers = 10
+        
+        avatars.removeAll()
+        generator = false
+        
+        observables.points.removeAll()
 
         let viewController = GKMatchmakerViewController(matchRequest: request)
         viewController?.matchmakerDelegate = self
@@ -111,6 +121,11 @@ class GameKit: NSObject {
         let request = GKMatchRequest()
         request.minPlayers = 2
         request.maxPlayers = 10
+        
+        avatars.removeAll()
+        generator = false
+        
+        observables.points.removeAll()
         
         request.recipients = shareplayRecipients
         
@@ -152,6 +167,24 @@ class GameKit: NSObject {
         }
     }
     
+    public func clearAnswers() {
+        observables.answers.removeAll()
+    }
+    
+    public func sendAnswer(_ answer: String, isRight: Bool) {
+        if let data = try? JSONSerialization.data(withJSONObject: ["answer": answer, "isRight": isRight], options: []) {
+            try? match?.sendData(toAllPlayers: data, with: .reliable)
+        }
+        
+        if generator && isRight {
+            addPoint(for: GKLocalPlayer.local.alias)
+        }
+    }
+    
+    public func getAvatarFor(_ id: String) -> UIImage? {
+        avatars[id]
+    }
+    
 }
 
 extension GameKit {
@@ -166,6 +199,8 @@ extension GameKit {
             
             if GKLocalPlayer.local.gamePlayerID == player?.gamePlayerID {
                 Task {
+                    self.generator = true
+                    
                     await self.generateGame()
                     
                     let now = Date()
@@ -184,7 +219,7 @@ extension GameKit {
     private func generateGame() async {
         let service = WeatherService()
         
-        let randomLocations = GeoJSON.generateRandomLocations()
+        let randomLocations = GeoJSON.generateRandomLocations(5)
         
         var temperatures = [String]()
         
@@ -211,6 +246,18 @@ extension GameKit {
                 }
             }
             rounds[i]["answers"] = answers
+        }
+    }
+    
+    private func addPoint(for alias: String) {
+        if observables.points[alias] == nil {
+            observables.points[alias] = 1
+        } else {
+            observables.points[alias]! += 1
+        }
+        
+        if let data = try? JSONSerialization.data(withJSONObject: ["points": self.observables.points], options: []) {
+            try? self.match?.sendData(toAllPlayers: data, with: .reliable)
         }
     }
     
@@ -249,6 +296,19 @@ extension GameKit: GKMatchmakerViewControllerDelegate {
         
         self.match = match
         self.runGame()
+        
+        self.match?.players.forEach { player in
+            player.loadPhoto(for: .small) { photo, error in
+                if let error {
+                    U.log(event: "GameKit.loadPhoto.error", error)
+                    return
+                }
+                
+                if let photo {
+                    self.avatars[player.gamePlayerID] = photo
+                }
+            }
+        }
     }
     
 }
@@ -305,8 +365,20 @@ extension GameKit: GKMatchDelegate {
                 self.rounds = rounds
                 self.startDate = Date(timeIntervalSince1970: TimeInterval(startDate))
                 
-                self.observables.status = .game
+                observables.status = .game
             }
+        }
+        
+        if let answer = data["answer"] as? String {
+            observables.answers[player.gamePlayerID] = answer
+            
+            if generator, let isRight = data["isRight"] as? Bool, isRight {
+                addPoint(for: player.alias)
+            }
+        }
+        
+        if let points = data["points"] as? [String:Int] {
+            observables.points = points
         }
     }
     

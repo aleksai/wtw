@@ -21,6 +21,7 @@ class GameView: BaseView {
     @IBOutlet weak var gameView: UIView!
     
     @IBOutlet var answerButtons: [UIButton]!
+    @IBOutlet var answerViews: [UIView]!
     
     @IBAction func playTap(_ sender: Any) {
         coordinator.findMatch()
@@ -121,6 +122,10 @@ class GameView: BaseView {
                 guard let self else { return }
                 
                 if let countdown {
+                    self.gameView.isHidden = true
+                    self.mapView.isHidden = true
+                    self.prepareView.isHidden = false
+                    
                     (self.prepareView.subviews.first as? UILabel)?.text = "\(countdown)"
                 } else {
                     if self.coordinator.observables.status == .game {
@@ -139,7 +144,7 @@ class GameView: BaseView {
                 
                 guard let map = self.mapView.subviews.first as? MKMapView, let latitide = round?["latitude"] as? Double, let longitude = round?["longitude"] as? Double else { return }
                 
-                let region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: latitide, longitude: longitude), span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10))
+                let region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: latitide, longitude: longitude), span: MKCoordinateSpan(latitudeDelta: 3, longitudeDelta: 3))
                 map.setRegion(region, animated: true)
                 
                 let geocoder = CLGeocoder()
@@ -147,7 +152,7 @@ class GameView: BaseView {
                 geocoder.reverseGeocodeLocation(CLLocation(latitude: latitide, longitude: longitude), preferredLocale: Locale.init(identifier: "en_US")) { (placemarks, error) in
                     guard let placemark = placemarks?.first else { return }
                     
-                    (self.gameView.subviews.first as? UILabel)?.text = "What's the temperature\(placemark.country == nil ? "?" : " in \(placemark.country ?? "")?")"
+                    (self.gameView.subviews.first as? UILabel)?.text = "What's the temperature\(placemark.country == nil ? "?" : " in \(placemark.locality != nil ? "\(placemark.locality!), " : "")\(placemark.country ?? "")?")"
                 }
                 
                 guard let answers = (round?["answers"] as? [String])?.shuffled() else { return }
@@ -159,11 +164,17 @@ class GameView: BaseView {
         }
         .store(in: &disposeBag)
         
-        coordinator.observables.$answered.sink { answered in
+        coordinator.observables.$points.sink { points in
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 
-                (self.gameoverView.subviews.first as? UILabel)?.text = "\(answered.1)/\(answered.0)"
+                var text = ""
+                
+                for point in points {
+                    text += "\(point.key): \(point.value)\n"
+                }
+                
+                (self.gameoverView.subviews.first as? UILabel)?.text = text
             }
         }
         .store(in: &disposeBag)
@@ -175,6 +186,31 @@ class GameView: BaseView {
                 for button in self.answerButtons {
                     button.isUserInteractionEnabled = answer == nil
                     button.backgroundColor = answer == button.title(for: .normal) ? .green : .black
+                }
+            }
+        }
+        .store(in: &disposeBag)
+        
+        coordinator.observables.$answers.sink { answers in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                
+                for button in self.answerButtons {
+                    if let answerView = self.answerViews.filter({ $0.tag == button.tag }).first {
+                        answerView.subviews.forEach({ $0.removeFromSuperview() })
+                        let players = answers.filter({ $0.value == button.title(for: .normal) })
+                        for (i, player) in players.enumerated() {
+                            if let image = GameKit.shared.getAvatarFor(player.key) {
+                                let imageView = UIImageView(image: image)
+                                imageView.frame.origin.x = answerView.frame.width - 32 - 8 - (8 * CGFloat(i))
+                                imageView.frame.origin.y = (answerView.frame.height - 32) / 2
+                                imageView.frame.size = CGSize(width: 32, height: 32)
+                                imageView.layer.cornerRadius = 16
+                                imageView.clipsToBounds = true
+                                answerView.addSubview(imageView)
+                            }
+                        }
+                    }
                 }
             }
         }
