@@ -31,6 +31,7 @@ class GameCoordinator {
     private var disposeBag = Set<AnyCancellable>()
     
     private var round = 0
+    private var roundStartedAt: Date?
     
     private var gameTimer: Timer?
     
@@ -66,6 +67,7 @@ extension GameCoordinator {
     
     private func startGame() {
         print("STARTSTARTSTART")
+        
         observables.round = nil
         observables.answer = nil
         observables.voicechat = false
@@ -113,6 +115,8 @@ extension GameCoordinator {
         observables.answer = nil
         observables.round = GameKit.shared.rounds[round]
         round += 1
+        
+        roundStartedAt = Date()
     }
     
 }
@@ -140,7 +144,9 @@ extension GameCoordinator {
     public func answer(_ answer: String) {
         observables.answer = answer
         
-        GameKit.shared.sendAnswer(answer, isRight: answer == (observables.round?["answers"] as? [String])?.first)
+        if let roundStartedAt {
+            GameKit.shared.sendAnswer(answer, isRight: answer == (observables.round?["answers"] as? [String])?.first, time: Double(Date().timeIntervalSince1970 - roundStartedAt.timeIntervalSince1970))
+        }
     }
     
 }

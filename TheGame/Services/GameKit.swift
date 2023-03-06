@@ -96,7 +96,7 @@ class GameKit: NSObject {
             GKMatchmaker.shared().startGroupActivity { player in
                 print("GA PLAYER", player)
                 
-                guard !self.shareplayRecipients.contains(where: { $0.gamePlayerID == player.gamePlayerID }) else { return }
+                guard !self.shareplayRecipients.contains(where: { $0.alias == player.alias }) else { return }
                 
                 self.shareplayRecipients.append(player)
             }
@@ -137,6 +137,19 @@ class GameKit: NSObject {
     
     public func stopMatch() {
         print("STOP MATCH")
+    
+        if let points = observables.points[GKLocalPlayer.local.alias] {
+            GKLeaderboard.submitScore(points, context: 0, player: GKLocalPlayer.local, leaderboardIDs: ["com.aleksai.TheGame.top.overall"], completionHandler: { error in
+                print("YO Leader ERROR", error)
+            })
+            
+            let achievement = GKAchievement(identifier: "com.aleksai.TheGame.ach.forecaster")
+            achievement.percentComplete = 100
+            
+            GKAchievement.report([achievement]) { error in
+                print("YO Ach ERROR", error)
+            }
+        }
         
         match?.disconnect()
         
@@ -171,14 +184,12 @@ class GameKit: NSObject {
         observables.answers.removeAll()
     }
     
-    public func sendAnswer(_ answer: String, isRight: Bool) {
-        if let data = try? JSONSerialization.data(withJSONObject: ["answer": answer, "isRight": isRight], options: []) {
+    public func sendAnswer(_ answer: String, isRight: Bool, time: Double) {
+        if let data = try? JSONSerialization.data(withJSONObject: ["answer": answer, "isRight": isRight, "time": time], options: []) {
             try? match?.sendData(toAllPlayers: data, with: .reliable)
         }
         
-        if isDicer && isRight {
-            addPoint(for: GKLocalPlayer.local.alias)
-        }
+        handlePoints(for: GKLocalPlayer.local.alias, isRight: isRight, time: time)
     }
     
     public func getAvatarFor(_ id: String) -> UIImage? {
@@ -188,6 +199,16 @@ class GameKit: NSObject {
 }
 
 extension GameKit {
+    
+    private func handlePoints(for alias: String, isRight: Bool, time: Double) {
+        if isDicer {
+            if isRight {
+                addPoints(for: alias, Int((5 - time) * 1000))
+            } else {
+                addPoints(for: alias, 100)
+            }
+        }
+    }
     
     private func setMatch(_ match: GKMatch) {
         match.delegate = self
@@ -208,7 +229,7 @@ extension GameKit {
             }
             
             if let photo {
-                self.avatars[player.gamePlayerID] = photo
+                self.avatars[player.alias] = photo
             }
         }
     }
@@ -323,11 +344,11 @@ extension GameKit {
         }
     }
     
-    private func addPoint(for alias: String) {
+    private func addPoints(for alias: String, _ points: Int) {
         if observables.points[alias] == nil {
-            observables.points[alias] = 1
+            observables.points[alias] = points
         } else {
-            observables.points[alias]! += 1
+            observables.points[alias]! += points
         }
         
         if let data = try? JSONSerialization.data(withJSONObject: ["points": self.observables.points], options: []) {
@@ -343,6 +364,7 @@ extension GameKit {
         isDicer = false
         
         observables.points.removeAll()
+        observables.answers.removeAll()
     }
     
 }
@@ -421,7 +443,7 @@ extension GameKit: GKMatchDelegate {
         if state == .disconnected {
             stopMatch()
         } else {
-            if GKLocalPlayer.local.gamePlayerID != player.gamePlayerID {
+            if GKLocalPlayer.local.alias != player.alias {
                 loadPlayerPhoto(player)
                 connect()
             }
@@ -444,11 +466,11 @@ extension GameKit: GKMatchDelegate {
     func match(_ match: GKMatch, didReceive data: Data, forRecipient recipient: GKPlayer, fromRemotePlayer player: GKPlayer) {
         print("MATCH FROM TO", player, recipient, data)
         
-        guard GKLocalPlayer.local.gamePlayerID == recipient.gamePlayerID, let data = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else { return }
+        guard GKLocalPlayer.local.alias == recipient.alias, let data = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else { return }
         
         if let dice = data["dice"] as? [Int] {
             print("MESSAGE DICE")
-            self.dice[player.gamePlayerID] = dice
+            self.dice[player.alias] = dice
             
             checkDice()
         }
@@ -465,10 +487,10 @@ extension GameKit: GKMatchDelegate {
         
         if let answer = data["answer"] as? String {
             print("MESSAGE ANSWER")
-            observables.answers[player.gamePlayerID] = answer
+            observables.answers[player.alias] = answer
             
-            if isDicer, let isRight = data["isRight"] as? Bool, isRight {
-                addPoint(for: player.alias)
+            if let isRight = data["isRight"] as? Bool, let time = data["time"] as? Double {
+                handlePoints(for: player.alias, isRight: isRight, time: time)
             }
         }
         
