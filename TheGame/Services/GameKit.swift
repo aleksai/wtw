@@ -53,9 +53,9 @@ class GameKit: NSObject {
     private var match: GKMatch?
     private var voiceChat: GKVoiceChat?
     
+    private var isDicer = false
     private var myDice = [Int]()
     private var dice = [String:[Int]]()
-    private var generator = false
     
     private var avatars: [String:UIImage] = [:]
     
@@ -176,7 +176,7 @@ class GameKit: NSObject {
             try? match?.sendData(toAllPlayers: data, with: .reliable)
         }
         
-        if generator && isRight {
+        if isDicer && isRight {
             addPoint(for: GKLocalPlayer.local.alias)
         }
     }
@@ -214,6 +214,9 @@ extension GameKit {
     }
     
     private func connect() {
+        print("CONNECT", observables.status)
+        guard observables.status == .matching || observables.status == .shareplay else { return }
+        
         observables.status = .connecting
         
         tryToRunMatch()
@@ -251,7 +254,7 @@ extension GameKit {
                 observables.status = .generating
                                 
                 Task {
-                    self.generator = true
+                    self.isDicer = true
                     
                     await self.generateGame()
                     
@@ -335,8 +338,9 @@ extension GameKit {
     private func reset() {
         avatars.removeAll()
         dice.removeAll()
+        shareplayRecipients.removeAll()
         
-        generator = false
+        isDicer = false
         
         observables.points.removeAll()
     }
@@ -417,8 +421,10 @@ extension GameKit: GKMatchDelegate {
         if state == .disconnected {
             stopMatch()
         } else {
-            loadPlayerPhoto(player)
-            connect()
+            if GKLocalPlayer.local.gamePlayerID != player.gamePlayerID {
+                loadPlayerPhoto(player)
+                connect()
+            }
         }
     }
     
@@ -461,7 +467,7 @@ extension GameKit: GKMatchDelegate {
             print("MESSAGE ANSWER")
             observables.answers[player.gamePlayerID] = answer
             
-            if generator, let isRight = data["isRight"] as? Bool, isRight {
+            if isDicer, let isRight = data["isRight"] as? Bool, isRight {
                 addPoint(for: player.alias)
             }
         }
