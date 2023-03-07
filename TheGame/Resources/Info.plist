@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>MBXAccessToken</key>
-	<string>pk.eyJ1Ijoic25lYWtlcmNhcmRlciIsImEiOiJjbGV1a2N5YTMwcWY1NDRzMDBuYW94OXQxIn0.l4umhQtb0PYf2ja_MmBCZw</string>
 	<key>MKDirectionsApplicationSupportedModes</key>
 	<array/>
 	<key>UIApplicationSceneManifest</key>
@@ -17,7 +15,5 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>We may ask to use your microphone for you to be able to use Voicechat</string>
 </dict>
 </plist>

@@ -382,11 +382,12 @@
 				CODE_SIGN_ENTITLEMENTS = TheGame/Resources/TheGame.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = S2TFH25BWZ;
+				DEVELOPMENT_TEAM = 5DVQ5BG38S;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TheGame/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "What's the º";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We may ask to use your microphone for you to be able to use Voicechat";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -399,7 +400,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.aleksai.TheGame;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lit.game;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -418,11 +419,12 @@
 				CODE_SIGN_ENTITLEMENTS = TheGame/Resources/TheGame.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = S2TFH25BWZ;
+				DEVELOPMENT_TEAM = 5DVQ5BG38S;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TheGame/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "What's the º";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We may ask to use your microphone for you to be able to use Voicechat";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -435,7 +437,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.aleksai.TheGame;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lit.game;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
